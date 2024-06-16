@@ -4,6 +4,31 @@
 #include <stdlib.h>
 #include <unistd.h>
 
+int starts_with(const char *prefix,const char *string)
+{
+    char c_string,c_prefix;
+    while((c_prefix=*prefix++) && (c_string=*string++))
+    {
+        if(c_prefix !=c_string )
+            return 0;
+    }
+
+		// If the string runs out before the prefix.
+		if (!c_string && c_prefix)
+			return 0;
+		else  
+			return 1;
+}
+
+
+int libsql_open_any(const char *url, const char *auth_token, libsql_database_t *out_db, const char **out_err_msg)
+{
+  if (starts_with("http://",url) || starts_with("libsql://",url))
+			return libsql_open_remote(url,auth_token, out_db, out_err_msg);
+  else 
+			return libsql_open_ext(url, out_db, out_err_msg);
+}
+
 int main(int argc, char *argv[])
 {
 	libsql_database_t db;
@@ -15,15 +40,19 @@ int main(int argc, char *argv[])
 	int num_cols;
 	int c;
 	int rflag=0;
+	int aflag=0;
 
-	 while ((c = getopt (argc, argv, "r")) != -1)
+	 while ((c = getopt (argc, argv, "ar")) != -1)
     switch (c)
       {
-      case 'r':
-        rflag = 1;
-        break;
-      }
+        case 'a':
+					aflag = 1;
+					break;
 
+				case 'r':
+					rflag = 1;
+					break;
+      }
 
   char* url= getenv ("LIBSQL_URL");
   if (!url)
@@ -33,12 +62,18 @@ int main(int argc, char *argv[])
 		}
 	else 	
 		fprintf(stderr, "Using the environment variable LIBSQL_URL=%s\n", url);
- 
-  if (rflag) {
-		fprintf(stderr, "Using libsql_open_remote \n");
-		char* auth_token= getenv ("LIBSQL_AUTH_TOKEN");
-		if (!auth_token)
+	
+	char* auth_token= getenv ("LIBSQL_AUTH_TOKEN");
+	if (!auth_token)
 				auth_token="";
+		retval = libsql_open_remote(url,auth_token, &db, &err);
+ 
+  if (aflag) {
+  	fprintf(stderr, "Using libsql_open_any \n");
+		retval = libsql_open_any(url,auth_token, &db, &err);
+  }
+  else if (rflag) {
+		fprintf(stderr, "Using libsql_open_remote \n");
 		retval = libsql_open_remote(url,auth_token, &db, &err);
   }	
    else {
