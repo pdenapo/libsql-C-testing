@@ -2,6 +2,7 @@
 #include <assert.h>
 #include <stdio.h>
 #include <stdlib.h>
+#include <unistd.h>
 
 int main(int argc, char *argv[])
 {
@@ -12,13 +13,38 @@ int main(int argc, char *argv[])
 	libsql_rows_t rows;
 	libsql_row_t row;
 	int num_cols;
+	int c;
+	int rflag=0;
+
+	 while ((c = getopt (argc, argv, "r")) != -1)
+    switch (c)
+      {
+      case 'r':
+        rflag = 1;
+        break;
+      }
+
 
   char* url= getenv ("LIBSQL_URL");
   if (!url)
-		url=":memory:";	
-  fprintf(stderr, "url=%s\n", url);
-  retval = libsql_open_ext(url, &db, &err);
-  //retval = libsql_open_remote(toStringz(url),toStringz(""), &db, &err);	
+		{
+		url=":memory:";
+		fprintf(stderr, "Using the default value LIBSQL_URL=%s\n", url);
+		}
+	else 	
+		fprintf(stderr, "Using the environment variable LIBSQL_URL=%s\n", url);
+ 
+  if (rflag) {
+		fprintf(stderr, "Using libsql_open_remote \n");
+		char* auth_token= getenv ("LIBSQL_AUTH_TOKEN");
+		if (!auth_token)
+				auth_token="";
+		retval = libsql_open_remote(url,auth_token, &db, &err);
+  }	
+   else {
+				fprintf(stderr, "Using libsql_open_ext \n");
+				retval = libsql_open_ext(url, &db, &err);
+   }
   if (retval != 0) {
 		fprintf(stderr, "%s\n", err);
 		goto quit;
@@ -30,15 +56,24 @@ int main(int argc, char *argv[])
 		goto quit;
 	}
 
- const char* create_table="CREATE TABLE Persons2(Name TEXT,Age INTEGER);";
+ const char* drop_table="DROP TABLE IF EXISTS Persons;";
+ fprintf(stderr, "%s\n", drop_table);
+ retval = libsql_execute(conn,drop_table, &err);
+ if (retval != 0) {
+		fprintf(stderr, "%s\n", err);
+		goto quit;
+	}
 
+		
+ const char* create_table="CREATE TABLE Persons(Name TEXT,Age INTEGER);";
+  fprintf(stderr, "%s\n", create_table);
   retval = libsql_execute(conn,create_table, &err);
   if (retval != 0) {
 		fprintf(stderr, "%s\n", err);
 		goto quit;
 	}
 
-	const char* insert_person="INSERT INTO Persons2 VALUES ('Paul',20);";
+	const char* insert_person="INSERT INTO Persons VALUES ('Paul',20);";
 
 	retval = libsql_execute(conn,insert_person, &err);
   if (retval != 0) {
@@ -46,7 +81,7 @@ int main(int argc, char *argv[])
 		goto quit;
 	}
   
- const char* insert_person2="INSERT INTO Persons2 VALUES ('Laura',30)";
+ const char* insert_person2="INSERT INTO Persons VALUES ('Laura',30)";
 
 	retval = libsql_execute(conn,insert_person2, &err);
   if (retval != 0) {
@@ -54,7 +89,7 @@ int main(int argc, char *argv[])
 	}
   assert(retval == 0);
 
-	retval = libsql_query(conn, "SELECT * FROM Persons2;", &rows, &err);
+	retval = libsql_query(conn, "SELECT * FROM Persons;", &rows, &err);
 	if (retval != 0) {
 		fprintf( stderr, "%s\n", err);
 		goto quit;
