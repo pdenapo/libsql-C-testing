@@ -43,16 +43,7 @@ int main(int argc, char *argv[])
 		fprintf(stderr, "%s\n", err);
 		goto quit;
 	}
-
-
- const char* drop_table="DROP TABLE IF EXISTS Persons;";
- fprintf(stderr, "%s\n", drop_table);
- retval = libsql_execute(conn,drop_table, &err);
- if (retval != 0) {
-		fprintf(stderr, "%s\n", err);
-		goto quit;
-	}
-		
+	
  const char* create_table="CREATE TABLE Persons(Name TEXT);";
   fprintf(stderr, "%s\n", create_table);
   retval = libsql_execute(conn,create_table, &err);
